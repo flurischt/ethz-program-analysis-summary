@@ -1,0 +1,43 @@
+\chapter{Applications: Semantic Program Differencing}
+\section{Motivation}
+Do two programs behave the same. Has an example \textit{print\_numbers\_v\_6\_9()} and \textit{print\_numbers\_v\_6\_10()} with syntactic differences but the same output. Are they the same? When running the programs and comparing the difference you can only spot cases where procedures differ. You cannot prove equivalence for most programs. \textbf{Abstract Semantic Differencing} FTW! Either prove equivalence or \underline{characterize their difference} (find differing program states that come from the same input).\\
+\underline{Sound}: Equivalence guaranteed
+\underline{Precise}: Report few differences
+\subsection{Equivalence under abstraction}
+Equivalence under abstraction does not entail equivalence between the concrete values it represents.
+\section{Their Approach}
+Nimrod Partush, Eran Yahav, Technion, Israel\\
+\begin{itemize}
+\item Analyze P and P' together
+\begin{itemize}
+\item define \underline{correlating semantics} that interprets the programs together
+\item Interpret in some ordering of their steps
+\item Abstract the correlating semantics (to handle infinite-state programs)
+\end{itemize}
+\item Search for the program ordering that allows the abstraction to \underline{best capture equivalence}.
+\end{itemize}
+Idea: join ($\sqcup$) states only if they hold equivalence for the same variables. \\
+$\{x<0,res=res'=-1\} \sqcup \{x>0,res=res'\} = \{x = \top, res=res' = [-1,1]\}$
+\subsection{Finding the Analysis Order}
+Sequential order has problems: When one programs analysis has finished its values have been abstracted and equivalence is lost. 
+Imagine a $M=n \times m$ Matrix here. $m_{1,1}$ is the abstract state where both programs are on line 1. How do we check the states?\\
+\begin{itemize}
+\item sequential $m_{1-n,1}$ then $m_{n,1-m}$:\\ 
+fails to see that two identical programs are equivalent (they never interesect on a state).
+\item Lock-step $m_{1,1}, m_{2,1}, m_{2,2}, m_{3,2}$:\\
+fails for programs with different number of lines
+\item all possible interleavings:\\
+need ot check \underline{every} element of $M$ (aka every possible interleaving)
+\end{itemize} 
+\subsection{Correlating Programs}
+\subsubsection{Previous work (SAS 13')}
+Previously they joined the programs into one program which holds both program semantics. Assumed syntactic similarity and used a syntactic diff. Transformation tool \textit{ccc} is available on github. \\
+\textbf{Problem}: when syntactc difference is vast, the composition will be sequential. Leads to imprecise (and useless) results. 
+\subsubsection{Speculative Exploration}
+Using a \underline{speculation window} $k$ both programs are epxplored $k$ steps distributed over both programs. 
+\begin{itemize}
+\item 0 over P and $k$ over P'
+\item 1 over P and $k-1$ over P'
+\item etc.
+\end{itemize}
+\textbf{TODO: read again.}

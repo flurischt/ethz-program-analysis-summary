@@ -1,0 +1,78 @@
+\chapter{Numerical domains I: Intervals}
+\section{Abstract Interpretation Recipe by Example}
+\begin{enumerate}
+\setcounter{enumi}{-1}
+\item Since these steps depend on the concrete function it makes sense to define the function in the concrete once and for all. Then the three step recipe can be applied.
+\item Abstract domain: Interval domain. \\
+The interval domain is a complete lattice with $\bot$ at the bottom and $[-\infty,\infty]$ at top. Other Elements are for example $[0,0], [1,1], [-2,2]$ etc.
+\item Abstract transformers: 
+\end{enumerate}
+
+\section{Interval Domain}
+Let the interval domain be: $(L^i, \sqsubseteq_i, \sqcup_i, \sqcap_i, \bot_i, [-\infty,\infty])$ \\
+We denote $Z^\infty = Z \cup \{-\infty, \infty\}$ \\
+The set $L^i=\{[x,y] | x,y \in Z^\infty, x<y\} \cup \{\bot_i\}$ \\
+For a set $S \subseteq Z^\infty, min(S)$ returns the minimum number in S, $max(S)$ returns the maximum number in S.
+\begin{itemize}
+\item $[a,b] \sqsubseteq_i [c,d]$ if $c \leq a$ and $b \leq d$
+\item $[a,b] \sqcup_i [c,d] = [min(\{a,c\}), max(\{b,d\})]$
+\item $[a,b] \sqcap_i [c,d] = [meet(max(\{a,c\}), min(\{b,d\}))]$ \\ where $meet(a,b)$ returns $[a,b]$ if $a \leq b$ and $\bot_i$ otherwise.
+\end{itemize} 
+
+\section{Cartesian Abstraction}
+Useful for abstracting the set of states reachable at a program point. Cartesian abstraction is used when we are interested in properties that \underline{do not involve relationships} between variables.\\
+\textbf{Interpretation}: $a^x(\{x \mapsto 5, y \mapsto 7 \}, \{x \mapsto 8, y \mapsto 9\}) = 1 \to \{x \to \{5,8\}, y \to \{7,9\}\}$ So we lose the correlation between variables. Then applying $\gamma^x(1 \to ...)$ will result in all possible combinations of x and y. (Cartesian Abstraction)?
+
+\textbf{TODO}: try to understand this. (Page 20).
+
+\newtheorem{theorem}{Theorem}
+\begin{theorem}
+If $(L, \sqsubseteq, \sqcup)$ is a complete lattice, and X is a set, then the set of functions, from X into L is a complete lattice $(X\to L, \sqsubseteq, \sqcup)$
+\end{theorem}
+
+\section{Widening}
+When a variable keeps increasing the iterates $F^i(\bot)$ will keep going and it's not possible to compute all the iterates to find a fixed point. Solution: \textbf{Widening} (approximate the fixed point).\\
+$\nabla:L \times L \to L$ is called a \underline{widening} operator if:
+\begin{itemize}
+\item $\forall a,b \in L: a \sqcup b \sqsubseteq a \nabla b$
+\item if $ x^0 \sqsubseteq x^1 \sqsubseteq x^2 \sqsubseteq ... \subseteq x^n \sqsubseteq ...$ is an increasing sequence then\\ $y^0 \sqsubseteq y^1 \sqsubseteq y^2 \sqsubseteq ... \sqsubseteq y^n$ \underline{stabilizes} after a \underline{finite number of steps}.\\
+where $y^0 = x ^ 0$ and $\forall i \geq 0:y^{i+1} = y^i \nabla x^{i+1}$
+\end{itemize}
+Widening is completely \underline{independent of the Function F}. Much like join it is an operator defined for the \underline{particular domain}.
+
+\begin{theorem}
+If $L$ is a complete lattice, $\nabla: L \times L \to L, F: L \to L$ is monotone then the sequence\\
+$y^0 = \bot\\y^1 = y^0 \nabla F(y^0)\\y^2 = y^1 \nabla F(y^1)\\ ... \\y^n=y^{n-1} \nabla F(y^{n-1})$\\
+will stabilize after a finit number of steps with $y^n$ being a \underline{post-fixedpoint} of F. From Tarskis Theorem \ref{Tarski} we know that a post-fixedpoint is above the least fixed point. 
+\end{theorem}
+
+\section{Example}
+This example works on the interval domain. Every variable is a number.
+\subsection{Concrete Domain}
+At every program counter (label, line-number) we want to keep the set of concrete states arising at that label. \\
+$1 \to \{\sigma_3\}$\\
+$2 \to \{\sigma_4, \sigma_5\}$
+\textbf{Intuition}: For a given program, just take all reachable states at a given label. \\
+Each element in the domain is a map: $\lambda l . \{\}$ e.g. $1 \to \{\sigma_3\}$
+\subsection{Collecting Semantics: $F^c$}
+For every label we store the join ($\cup$) of $[action]_c(m(l'))$. \textbf{See sheet 15}.\\
+$(l',action,l)$ must exist for every transition in the program. E.g $(1,i<10,2)$ and $(1,i \geq 10,5)$ would be used for a program where on line 1 an if-condition "if($i<10$)" starts and on line 5 the else-clause continues.\\
+If we have $(l',action,l)$ for every possible transition then we are \underline{sound}. If we have $(l',action,l)$ even for transitions that do not occur in the program then we are \underline{imprecise}. We unnecessarily create more flows.\\
+Possible actions are in our case: Boolean expressions, assignments and skip.
+
+\subsection{Interval Abstraction}
+\underline{Page 22}:\\ 
+$\alpha^i(C)(l)x = [min(C(l)x), max(C(l)x)]$ if $C(l)x \neq \emptyset$ ($\bot$ otherwise)\\
+$\gamma^i(M)(l)x = {v \in Z| l \leq v \wedge v \leq u}$ if $M(l)x = [l,u]$ ($\bot$ otherwise)
+
+\subsection{Arithmetic Expressions}
+Adding $\bot$ to anything else yields $\bot$.\\
+Otherwise $[x,y] + [z,q] = [x+z,y+q]$
+\textbf{TODO}: check page 33 $pair_{\leq}()$ definition.
+
+\subsection{Widening for Interval Domain}
+$[a,b] \nabla_i [c,d] = [e,f]$ where:\\
+if $ c < a,$ then $e = -\infty,$ else $e=a$\\
+if $d > b,$ then $f = \infty,$ else $f = b$\\
+If one of the operands is $\bot$ the result is the other operand.\\
+\textbf{Intuition}: If endpoint is unstable, move its value to the extreme case.

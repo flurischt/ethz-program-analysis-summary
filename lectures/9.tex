@@ -1,0 +1,126 @@
+\chapter{Predicate Abstraction and Concurrency}
+\section{Introduction}
+Predicate Abstraction is used to automatically verify: C device drivers (SLAM project at MSR), distributes concurrent algorithms, biological systems (PRISM at Oxford), security properties.
+\section{Theory}
+\subsection{Domain}
+\subsubsection{Concreate Domain}
+$Lab \to p(Store)$ \textbf{TODO: powerset symbol?}\\
+e.g. $2 \to \{\{x=1,y=3\},\{x=2,y=2\}\}$
+\subsubsection{Logical Domain}
+Capture the set of stores with a FOL formula. Example:\\
+$1 \to x=1 \wedge y=2\\
+2 \to (x=1\wedge y=3) \vee (x=2\wedge y=2)$
+Then a Galois Connection between $Lab \to p(Store)$ and $Lab \to FOL$ can be setup.
+\subsection{Concrete Transformers}
+$F^{FOL}:(Lab \to FOL) \to (Lab \to FOL)$\\
+$F^{FOL}(m)l = \begin{cases} true &\mbox{if l is initial label}\\ 
+\bigvee_{(l',action,l)}\llbracket action \rrbracket_{FOL}(m(l')) & \mbox{otherwise}\end{cases}$
+\subsubsection{Effect of action on a FOL formula}
+$\llbracket action \rrbracket_{FOL}: FOL \to FOL$\\Examples: \\
+$\llbracket skip \rrbracket_{FOL}(x=1 \wedge y=2) = (x=1 \wedge y=2)\\ \llbracket (x > 5)\rrbracket_{FOL}(x>0 \wedge y=2)=(x>5 \wedge y=2)\\ \llbracket (x:=7) \rrbracket_{FOL}((x<0) \wedge (x=5)) = (x=7)$
+\subsubsection{Strongest post condition}
+The \underline{best transformer} for $\llbracket action \rrbracket_{FOL}$ is the strongest post-condition (sp).\\
+$\llbracket action \rrbracket_{FOL}(\psi) = sp(\psi, action)$\\
+With $sp(\psi, action) = \psi'$ The formula $\psi'$ si the most precise (strongest) set of successor stores of $\psi$ as determined by action.\\
+$sp(\psi, skip) = \psi\\
+sp(\psi, b) = \psi \wedge b\\
+sp(\psi, x:=a) = \exists v:x=a[v/x] \wedge \psi[v/x]$\\
+Quantifiers are difficult to handle for automated reasoning engines and many decidable fragments do not allow quantifiers.
+\subsubsection{Weakest Pre-Condition}
+$wp(\psi, skip) = \psi\\ wp(\psi,b) = b \Rightarrow \psi\\ wp(\psi, x:=a) = \psi[a/x]$\\
+\textbf{No quantifiers!}
+\subsubsection{linking sp with wp}
+\begin{theorem}
+$sp(\psi, action) \Rightarrow \psi' \equiv \psi \Rightarrow wp(\psi', action)$
+\end{theorem}
+Using weakest preconditions we get rid of quantifier. \textbf{TODO}: check again. 
+\subsubsection{Undecidability}
+FOL is undecidable. If $\psi$ in FOL is not valid, the no algorithm is guaranteed to terminate. Can't guarantee termination of iterating $F^{FOL}$.
+\section{Predicate Abstraction recipe}
+\begin{enumerate}
+\item Come up with an \underline{abstract domain} (based on the type of properties you want to prove)
+\item Define abstract semantics \underline{for the programming language} w.r.t. the abstract domain from step 1.
+\begin{itemize}
+\item define the abstract transformers (effect of statement on the domain)
+\item prove that the abstract semantics are \underline{sound} w.r.t \underline{concrete semantics} of the programming language
+\end{itemize}
+\item iterate abstract transformers over the abstract domain until fixed point
+\end{enumerate}
+\subsection{Abstract domain}
+We define $F$ to be a \underline{finite} set of predicates $F=\{\phi_1, \phi_2,... \phi_n\}$ where the predicates are selected from a \underline{decidable} logical fragment. Examples for the predicates are: \\$\phi_1 := x > 0 \wedge x = (x+1)\\ \phi_2:=z+y>5 \wedge x=(y+y)$ (over theory of integers).\\
+Using the predicates we define a \underline{cube} which is a \underline{conjuction} of predicates and negated predicates where each $\phi_i$ appears \underline{at most once}. Cubes can be represented as vectors of size n where the value at index $i$ indicates if $\phi_i$ is negated (0), positive (1) or missing (T).\\ \\
+Our resulting abstract domain is $Lab \to Cube_F$ where $Cube_F$ is the set of all possible cubes formed over the predicates in $F$.\\ \\ 
+Let's define $\sqsubseteq_{pa}, \sqcap_{pa}, \sqcup_{pa}$:
+\begin{itemize}
+    \item Ordering $\sqsubseteq_{pa}$: 
+        \begin{itemize}
+            \item $a \sqsubseteq_{pa} b$ compares the elements pointwise
+            \item $a \sqsubseteq_{pa} b $ means $a \Rightarrow b$, but not vice versa
+            \item Examples:\\
+                $101 \sqsubseteq_{pa} 100 = no\\ 100 \sqsubseteq_{pa} 101 = no\\T01 \sqsubseteq_{pa} 10T = no\\011 \sqsubseteq_{pa} 01T = yes\\01T \sqsubseteq_{pa} 011 = no$
+        \end{itemize}
+    \item Greates lower bound $\sqcap_{pa}$
+        \begin{itemize}
+            \item keep $\phi_k$ unsell $\phi_k$ appears in a, and $\neg \phi_k$ appears in b (or vice versa) in which case $a \sqcap_{pa} b$ returns false
+            \item Examples: $101 \sqcap_{pa} 100 = false\\101 \sqcap_{pa} 10T = 101\\ T01 \sqcap_{pa} 10T = 101\\ 00T \sqcap_{pa} 01T = false$
+        \end{itemize}
+    \item Least upper bound $\sqcup_{pa}$
+        \begin{itemize}
+            \item predicate (or negation) is kept if it appears in both cubes. 
+            \item if all predicates are ommited then $\sqcup_{pa}$ returns true
+            \item $a \vee b \Rightarrow a \sqcup_{pa} b$
+            \item Examples:\\ $101 \sqcup_{pa} 100 = 10T\\101 \sqcup_{pa} 010 = true\\T01 \sqcup_{pa} 10T = T0T\\true \sqcup_{pa} 011 = true$
+        \end{itemize}
+\end{itemize}
+\subsubsection{Connection Domains - Galois Connections}
+Next we setup a Galois connection between FOL and $Cube_F$
+Concretization: $\gamma: Cube_F \to FOL\\ \gamma(cube) = cube$\\ $\alpha$ is defined by $\gamma$ and vice versa. So: \\
+$\alpha(\psi) = \sqcap_{pa}\{cube | \psi \sqsubseteq_{FOL}\gamma(cube)\}$ \textbf{TODO:} where is this definition from?\\
+In FOL, $\sqsubseteq_{FOL}$ is: $\alpha(\psi) = \sqcap_{pa}\{cube | \psi \Rightarrow \gamma(cube)\}$ By substitution of $\gamma$ we get:\\
+\underline{$a(\psi)=\sqcap_{pa}\{cube|\psi \Rightarrow cube\}$}\\
+Example:\\
+$F=\{(2x-y), (y*y>4), (x+y<5)\}\\
+\alpha(x=1 \wedge y=3) = \sqcap_{pa}\{0TT, T1T, TT1, 01T, 0T1, T11, 011\} = 011 = \neg(2x-y>0)\wedge (y*y>4)\wedge x+y<5$\\
+\textbf{Optimization}: instead of $\alpha(\psi)=\sqcap_{pa}\{cube | \psi \Rightarrow cube\}$ use $\alpha(\psi)=\sqcap_{pa}\{literal|\psi \Rightarrow literal\}$
+$literal \iff cube$ has only one value different that T in the correpsonding array. Example: 0TT, T1T. \textbf{TODO: no idea here, page 28}\\
+\textbf{TODO: why is this a galois connection?}
+\subsection{Abstract Transformers}
+\textbf{TODO: pretty cool construction of abstract transformer}\\
+$\llbracket action \rrbracket_{FOL}(\psi) = sp(\psi, action)$ is the best concrete transformer. \textbf{Why?} Now lets defined the \underline{best abstract transformer}: $\llbracket action \rrbracket_{pa}:Cube_F \to Cube_F$
+\begin{align}
+    \llbracket action \rrbracket_{pa}(c) 
+    &= \alpha \circ \llbracket action \rrbracket_{FOL} \circ \gamma(c)
+    \\&= \alpha \circ \llbracket action \rrbracket_{FOL}(c) && \text{substitution of $\gamma$}
+    \\&= \sqcap_{pa}\{literal | \llbracket action \rrbracket_{FOL}(c) \Rightarrow literal\} && \text{definition of $\alpha$}
+    \\&=\sqcap_{pa}\{literal | sp(c,action) \Rightarrow literal\} &&\text{definition of $\llbracket action \rrbracket_{pa}$}
+    \\&=\sqcap_{pa}\{literal | c \Rightarrow wp(literal, action)\} &&\text{by sp to wp connection}
+\end{align}
+So to compute the tranformer, we need to check whether the formula $c \Rightarrow wp(literal, action)$ is \underline{valid}. This is done with an SMT solver and it's therefore desirable that the formulas are in some decidable logical fragment.
+\subsubsection{Key points}
+\begin{itemize}
+    \item for predicate abstraction the transformers are proved correct once and for all
+    \item then we can instantiate predicate abstraction with any predicates and don't need to prove correctness
+    \item in that sense predicate abstraction is a parametric framework
+    \item the challenge is to find the sufficient predicates
+\end{itemize}
+\subsection{Iterate to a fixed point}
+see page 33.
+\subsection{Summary}
+\begin{itemize}
+    \item we used wp for the best transformer because it introduces no quantifiers
+    \item Best abstract transformer is sound by construction
+    \item an important challenge is to find the sufficient predicates F to verify the program
+\end{itemize}
+\subsubsection{An alternative to fidex-point iteration}
+\textbf{TODO}: important / good idea?\\ 
+Input: a program $P$, a set of predicates $F$ and a property $S$ to verify. 
+\begin{enumerate}
+    \item Build a boolean program $B(P,F)$\\
+        Program contains only boolean variables, one for each predicate in F.
+    \item Check that $B(P,F)$ verifies the property $S$. \\
+        If the property holds for $B(P,F)$ then it also holds for P.
+\end{enumerate}
+\textbf{TODO: pages 36-37}
+\section{Predicate Abstraction for Modern Concurrency}
+\textbf{TODO: } check again. especially the "boolean program" part. 
+cube is $O(3^{length})$ used extrapolition to work on cubes $\ll cube$ 

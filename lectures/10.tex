@@ -1,0 +1,98 @@
+\chapter{Synthesis from Examples}
+The goal of synthesis is to learn a program from examples. The key challenge is \underline{generalization}, where we want to generalize from examples to something that is applicable in new situations. How do we generalize from a small number of examples? When do we know we're done? 
+\section{Problem Dimensions}
+\begin{itemize}
+\item Programming languages \\
+Need a language expressive enough to capture programs of interest and is amenable to learning.
+\item Machine Learning \\
+Need to learn a function in the language
+\item HCI \\
+Input-output based interatictino model
+\end{itemize}
+\section{Version Spaces}
+First some keywords:
+\begin{itemize}
+\item \underline{hypothesis h}: is a function $h: Input \to Output$
+\item \underline{hypothesis space H}: is a set of hypotheses
+\item a hypothesis $h$ is \underline{consistent} with a sequence of input-output examples iff $\forall (x,y) \in D: h(x) = y$
+\item \underline{version space} $VS_{H,D}$ consists of only those hypotheses in $H$ that are \underline{consistent} with all examples in $D$. $VS_{H,D} \subseteq H$
+\end{itemize} 
+Version spaces are usually associated with some form of partial order on the hypotheses in $VS_{H,D}$. $h_1 \sqsubseteq h_2 \iff \text{h2 covers more examples than } h_1$ \\ Version spaces can be represented using just 
+\begin{itemize}
+\item the most general constistent hypothesis (least upper bound)
+\item the most specific consistent hypothesis (greatest lower bound)
+\end{itemize}
+\section{Version Space Algebra}
+Let's define \underline{operations} on a version space $VS_{H,D}$
+\begin{itemize}
+\item combining version spaces
+\item joining version spaces
+\item transforming version spaces
+\end{itemize}
+This allows us to build complex version spaces out of simpler ones. Trasnformations are needed because given more examples we'll need to update the version space. 
+\subsection{Union}
+$VS_{H1,D} \cup VS_{H2,D} = VS_{H1 \cup H2, D}$
+For the same set of examples D. The functions in $H1$ and $H2$ have the same domains and ranges.
+\subsection{Join}
+Used symbol for join: $\bowtie$\\
+$VS_{H1,D1} \bowtie VS_{H2,D2} = \{\langle h_1,h_2 \rangle | h_1 \in VS_{H1,D1}, h_2 \in VS_{H2,D2}, C(\langle h_1, h_2\rangle, D)\}$
+Where $D1,D2$ are sequences of n inpute-output examples over $H1$ or $H2$ respectively.\\
+D is a sequence $\langle (i_1,o_1), (k_1,l_1) \rangle ... \langle (i_n, o_n), (k_n, l_n) \rangle$\\
+$C(h,D)$ is a \underline{consistency predicate}, true when hypothesis h consistent in D.
+\subsection{Independent join}
+Same definition but condition for independence:\\
+$\forall h_1 \in H1, h_2 \in H2 . C(h_1, D1) \wedge C(h_2, D2) \implies (\langle h_1, h_2 \rangle, D)$ That's essentially a cartesian product.\\ 
+\textbf{Effiency of independent join $\bowtie$}:\\
+$Space(VS_{H1,D1} \bowtie VS_{H2,D2}) = Space(VS_{H1,D1}) + Space(VS_{H2,D2})+C1\\ \forall d_1, d_2 . Time(VS_{H1,D1} \bowtie VS_{H2,D2}, \langle d_1, d_2 \rangle) = Time(VS_{H1,D1}, d_1) + Time(VS_{H2,D2}, d2) + C2$
+\subsection{Transforms}
+Transform one version space into another. Version space $VS1$ is a transform of version space $VS2$ iff: $\text{Let VS1} = \{g | \exists f \in VS2 . \forall i . g(i) = rm^{-1}(f(dm(i)))\}$. Where $dm$ is a map from elements in the domain of functions in $VS1$ to elements in the domain of the functions in $VS2$ and $rm$ is a 1-1 map from elements in the range of functions in $VS1$ to elements in the range of the functions in VS2.
+\section{Learning Version spaces}
+PAC learnability - probably approximately correct learning - helps us to answer the question "How many examples do we need to learn the target function?".\\
+We \underline{run} a version space on an input by applying every function in VS on that input and collecting the outputs. Two hypotheses $h_1,h_2$ may "agree" on some input.
+\begin{itemize}
+    \item Assign a probability to each hypothesis in the version space
+    \item Choosing a probablity allows us \begin{itemize}
+            \item to find better hypotheses (those with higher probability)
+            \item to specify priors 
+            \item to deal with noisy data (by assignin a low probability > 0 to inconsistent hypotheses)
+        \end{itemize}
+    \item $Pr(h | H)$ denothes the probability associated with hypothesis h in a hypothesis space H
+    \item $Pr(Vi | W) $ denotes the prob. of a version space Vi given the version space W which is union of other version spaces
+    \item if no prior knowledge, these are the uniform distributions
+    \item The prob. of a hypothesis h in a version space V, denoted by $Pr(h | V)$ is updated as the version space changes and inconsistent hypotheses are removed.
+\end{itemize}
+\subsection{Inductive Definitions of Probabilities}
+\begin{itemize}
+    \item initially: $Pr(h | V) = Pr(h | H)$
+    \item \textbf{Transform}: if version space V1 is a transform of another version space V2, then $Pr(h | V1) = Pr(f, V2)$ with $f$ beging the "matching function"
+    \item \textbf{Union}: $P(h | V) = wi * P(h | Vi)$ \\
+        V is the union of VI's \\
+        wi is the probability of version space Vi\\
+        \textbf{TODO, page 20}: werden die aufsummiert oder was? 
+    \item \textbf{Join}: $P(h | V)$ is the joint probability of the hypotheses hi, ... hn.\\
+        if independent then: $P(h | V) = P(hi | Vi) * ... P(hn | Vn)$
+\end{itemize}
+Having all those probabilities allows us to sum up all hypotheses that give the same result for a given input.
+\begin{equation}
+    \label{output_probabilities}
+    Pr_v^O(i) = \sum_{\forall h | h(i) = o} Pr(h | V)
+\end{equation}
+This way we can present to the user the output states with the highest probability.
+\section{Example: SMARTedit}
+SMARTedit (by Tessa Lau) is one of the first working approaches and for learning interesting programs. It introduces version space algebras (VSA) for learning programs.
+SMARTedit is a texteditor that represents it editor state as $\sigma=\langle T,L,P,E \rangle$ with $T$ beging the contents of the text buffer, $L$ the cursor location (row, column), $P$ the contents of the clipboard and $E$ a contiguous region of T representing selected text.\\
+\subsection{Action}
+An editor \underline{action} is a function $a: \Sigma \to \Sigma$ with $\Sigma$ beging the set of possible editor states.\\
+\textbf{Example:}\\
+$\langle T, (42,0), P, E\rangle \to \langle T, (43,0), P, E\rangle$
+"move to the next line" or "move to the beginning of line 43" are \underline{consistent}. \\
+"move to the beginning of line 47" and "move to the end of line 41" are inconsistent.
+Actions have locations. E.g move to location, delete between two locations etc.
+\subsection{Version space}
+SMARTedit's version space is a union of different kinds of actions.The action function maps from one state to another.
+\subsubsection{Location version space}
+\textbf{TODO page 36}
+\subsection{Learning}
+The system learns by updating the versino space on new examples. Inconsistent hypotheses are removed and parts of the hierarchy are pruned away. An examples consistency is tedsted against the entire version space.\textbf{see example on page 40}  \\
+\subsection{string searching version spaces}
+Whatever... \textbf{TODO}

@@ -1,0 +1,173 @@
+\chapter{Abstract interpretation}
+A.I. - invented in late 70s by Patrick Cousot. \\
+Frameworks for building analyzers: LLVM, Soot, WALA
+
+\section{Recipe for building a static analyzer}
+\begin{enumerate}
+ \item come up with an \textbf{abstract domain} (select based on the poperties to prove)
+ \item define abstract semantics \textbf{for the programming language} w.r.t. to the abstract domain (define the \textbf{abstract transformer}, the effect of statement/expression on the abstract domain).
+ \item iterate until fixed point is reached
+\end{enumerate}
+
+\textbf{fixed point} is an \textbf{over-approximation} of the program
+
+\section{Partially Ordered Sets (posets)}
+\begin{itemize}
+ \item Binary relation $\sqsubseteq$ on a set L (subset of $L \times L$)
+ \item \textbf{three properties}: reflexive, transitive, anti-symmetric
+ \item Reflexive: $\forall p . p \sqsubseteq p$
+ \item Transitive: $\forall {p,q,r} \in L . (p \sqsubseteq q \land q \sqsubseteq r) \implies p \sqsubseteq r$
+ \item Anti-symmetric: $\forall p,q . (p \sqsubseteq q \land q \sqsubseteq p) \implies p = q$
+
+\item A poset $(L, \sqsubseteq)$ is a set $L$ equipped with a partial ordering $\sqsubseteq$.
+\item $p \sqsubseteq q$ intuitively means, that $p \implies q$ \\
+if $p \sqsubseteq q$ then p is "\textbf{more precise}" than q (p represents fewer concrete states than q)
+
+\item \textbf{Least} element ($\bot$) in Poset: $\forall p . \bot \sqsubseteq p$ \\ 
+\textbf{Greatest} element ($\top$) in Poset: $\forall p . p \sqsubseteq \top$ \\ **may not exist**. but are unique if they do.
+\item $u \in L$ is an \textbf{upper bound} of $Y \subseteq L$ if $\forall p \in Y . p \sqsubseteq u$
+\item $l \in L$ is a \textbf{lower bound} of Y if $\forall p . l \sqsubseteq p$
+\item $\sqcup Y \in L$ is a \textbf{least upper bound} of Y if $\sqcup Y$ is an upper bound of Y and $\sqcup Y \sqsubseteq u$ whenever $u$ is another upper bound of Y.
+\item $\sqcap Y \in L$ is \textbf{greatest lower bound} of Y if $\sqcap Y$ is a lower bound of Y and $\sqcap Y \sqsupseteq l$ whenever l is another lower bound of Y.
+\item $\sqcup Y$ and $\sqcap Y$ need not be in Y
+\item $p \sqcup q$ and $\sqcup\{p,q\}$ are the same
+\end{itemize}
+\section{Complete Lattices}
+$(L,\sqsubseteq,\sqcup)$ is a poset where $\sqcup Y$ and $\sqcap Y$ exist for any $Y \subseteq L$
+\section{Chains}
+Given a poset $(L,\sqsubseteq)$, a subset $Y \subseteq L$ is a \textbf{chain} if every two elements in $Y$ are comparable (ordered) \\
+$\forall {x,y} \in Y . (x \sqsubseteq y) \lor (y \sqsubseteq x)$
+The \textbf{height} of a poset is the chain with the largest size.
+
+\section{Functions}
+Let $f: A \to B$, $g: A \to A$, $(A, \sqsubseteq)$ a poset and $x \in A$
+\begin{itemize}
+\item \textbf{monotone}: \\ 
+$\forall a,b \in A: a \sqsubseteq b \implies f(a) \leq f(b)	$ \\
+$\forall a,b \in A: a \sqsubseteq b \implies g(a) \sqsubseteq g(b)$
+\item \textbf{Fixed Points} \\
+x is fixed point iff g(x) = x \\
+x is a \textbf{post-fixedpoint} iff $g(x) \sqsubseteq x$ \\
+Fix(f) is the set of all fixed points \\
+Red(f) = set of all post-fixedpoints \\
+\textbf{least} fixed point ($lfp^{\sqsubseteq}f \in L$): is fixed point and all other fixed points are above ($\sqsubseteq$) \\ 
+a \textbf{least fixed point may not exist} \\
+When does a list fixed point exist? see Tarski's fixed point theorem \ref{Tarski}
+\item \textbf{Function iterates}: $g^0(a), g^1(a), g^2(a)$ where $g^{n+1}(a) = g(g^n(a))$ we usually take $a=\bot$
+\item \textbf{completely meet-preserving}: for \underline{any subset} $Y \subseteq A$: $f(\sqcap_2 Y) = \sqcap_1\{f(y)|y \in Y\}$ (when $\sqcap_1$ and $\sqcap_2$ exists)
+\item \textbf{completely join-preserving}: for \underline{any subset} $Y \subseteq A$: $f(\sqcup_1 Y) = \sqcup_2\{f(y)|y \in Y\}$ (when $\sqcup_1$ and $\sqcup_2$ exists) Sheets 36,37 for examples
+\item join-preserving implies monotonity 
+\end{itemize}
+
+\subsection{Tarski's fixed point theorem}
+\label{Tarski}
+if $(L,\sqsubseteq,\sqcup,\sqcap,\bot,\top)$ is \textbf{complete lattice} and \\ $f: L \to L$ is a \textbf{monotone function} \\
+then: \\
+$lfp^{\sqsubseteq}f$ exists, and \\
+$lfp^{\sqsubseteq}f = \sqcap Red(f) \in Fix(f)$
+
+\subsection{iterative algo for fixed point}
+\label{fixedpoint_theorem}
+Given a poset of \underline{finite} height, a least element $\bot$ and a \underline{monotone} f:\\
+The iterates $f^0(\bot), f^1(\bot)..$ form an increasing sequence which eventually stabilizes from some $n \in N$. \\
+$f^n(\bot) = f^{n+1}(\bot)$ and: \\
+\begin{equation}
+\label{eq:iterative_lfp}
+lfp^{\sqsubseteq}f = f^n(\bot)
+\end{equation}
+Equation \ref{eq:iterative_lfp} leads to a simple iterative algorithm for computing $lftp^{\sqsubseteq}f$.
+
+\section{Galois Connection}
+Let $(L_1,\sqsubseteq_1,\sqcup_1,\sqcap_1)$ and let $(L_2,\sqsubseteq_2,\sqcup_2,\sqcap_2)$ be complete lattices. \\
+Let $\alpha: L_1 \to L_2$ and let $\gamma: L_2 \to L_1$
+Then $\alpha$ and $\gamma$ form a \textbf{Galois connection} if:
+\begin{itemize}
+\item $\alpha$ is monotone
+\item $\gamma$ is monotone
+\item $\alpha \circ \gamma$ is \underline{reductive}: $\forall x_2 \in L_2: \alpha(\gamma(x_2)) \sqsubseteq_2 x_2$
+\item $\gamma \circ \alpha$ is \underline{extensive}: $\forall x_1 \in L_1: \gamma(\alpha(x_1)) \sqsupseteq_1 x_1$
+\end{itemize}
+Equivalent definition (more useful for proofs):
+\begin{equation}
+\label{eq:galois}
+\forall x_1 \in L_1, \forall x_2 \in L_2: \alpha(x_1) \sqsubseteq_2 x_2 \iff x_1 \sqsubseteq_1 \gamma(x_2)
+\end{equation}
+\textbf{Intuition}: $\alpha$ and $\gamma$ are monotone because relationshop between information and concrete is \underline{preserved} in the abstract and vice versa. \\
+\textbf{Intuition 2}: $\gamma \circ \alpha$ is extensive because $\alpha$ is indeed a correct approximation. \\ \\
+Latticed defined over $L_1$ captures the \textbf{concrete}. The other one captures the \textbf{abstract}. $\alpha$ is an \textbf{abstraction function} and $\gamma$ is a \textbf{concretization function}. The galois connections links concrete and abstract.
+\subsection{Galois Insertion}
+Galois insertion is a Galoise connection where $\gamma$ is also \underline{injective}. This means, that $\alpha \circ \gamma$ is the \underline{identity} function and that $\alpha$ is also \underline{surjective}.\\
+\textbf{Intuition}: Each abstract element has a \underline{unique} representation in the concrete.
+\subsection{Key property of Galois connection}
+The abstraction function $\alpha$ \underline{uniquely determines} the concretization function $\gamma$ and vice versa.\\
+\begin{equation}
+\label{eq:galois_key_property}
+\begin{split}
+\underline{if}: (L_1,\sqsubseteq_1,\sqcup_1,\sqcap_1) {}_{\to_{\alpha}}^ {\gets^{\gamma}} (L_2,\sqsubseteq_2,\sqcup_2,\sqcap_2) \\ 
+\underline{then}: \alpha(x) = \sqcap_2\{z | x \sqsubseteq_1 \gamma(z)\} \\
+\gamma(z) = \sqcup_1\{x | \alpha(x) \sqsubseteq_2 z\} \\
+\end{split}
+\end{equation}
+Before building the connection this way, need to check that $\alpha$ is completely join preserving or $\gamma$ is completely meet preserving.
+\subsection{Some more properties}
+a galois connection implies, that $\alpha$ is completely join preserving and that $\gamma$ is completely meet-preserving.\\
+\textbf{The other direction is not true. See counter example on page 40}
+\subsection{Composition}
+Galois connections can be composed. E.g. use $\alpha_2 \circ \alpha_1$ to abstract from $L_1$ to $L_3$ via $L_2$. Same for $\gamma$ for concretisation.
+\section{Function Approximation}
+\subsection{general}
+Given $f:A \to B$ and $g: A \to B$ \\ $g$ approximates $f$ if $\forall x \in A:f(x) \leq g(x)$
+\subsection{Using a galois connection}
+Given $(L_1,\sqsubseteq_1,\sqcup_1,\sqcap_1) {}_{\to_{\alpha}}^ {\gets^{\gamma}} (L_2,\sqsubseteq_2,\sqcup_2,\sqcap_2)$ \\ 
+and \\
+$f:L_1 \to L_1$ \\
+$g:L_2 \to L_2$ \\
+g approximates f if:\\
+$\forall x \in L_1, \forall z \in L_2: \alpha(x) \sqsubseteq_2 z \implies \alpha(f(x)) \sqsubseteq_2 g(z)$
+Applying f(x) and the abstracting stays below abstracting and then applying g(z).\\
+\textbf{Equivalent statements for monotone functions}:
+\begin{itemize}
+\item $\forall x \in L_1, \forall z \in L_2: \alpha(x) \sqsubseteq_2 z \implies \alpha(f(x)) \sqsubseteq_2 g(z)$
+\item $\forall z \in L_2: g(z) \sqsupseteq_2 \alpha(f(\gamma(z)))$
+\item $\forall x \in L_1: \alpha(f(x)) \sqsubseteq_2 g(\alpha(x))$
+\item $\forall z \in L_2: f(\gamma(z)) \sqsubseteq_1 \gamma(g(z))$
+\end{itemize}
+\subsection{Least precise approximation}
+$g(z)=\top$ is a \underline{sound} but \underline{imprecise} approximation. Existence of $g(z)$ is guaranteed. \\
+Soundness: $\forall z \in L_2: \top \sqsupseteq_2 \alpha(f(\gamma(z)))$
+\subsection{Most precise approximation}
+\begin{itemize}
+\item a composition of monotone functions is monotone
+\item $g(z) = \alpha(f(\gamma(z)))$ is the \textbf{best abstract function} that satisfies the condition $\forall z \in L_2: g(z) \sqsupseteq_2 \alpha(f(\gamma(z)))$
+\item hard to implement such a $g(z)$ algorithmically
+\item can come up with $g(z)$ that has \underline{same behaviour} as $\alpha(f(\gamma(z)))$ but \underline{different implementation}. Any such $g(z)$ is referred to as the \textbf{best transformer}.
+\end{itemize}
+\subsection{Key Theorem 1: Least Fixed Point Approximation}
+if we have 
+\begin{enumerate}
+\item \underline{monotone} functions $F: C \to C$ and $F^{\#}:A \to A$
+\item $\alpha:C \to A$ and $\gamma: A \to C$ forming a Galois Connection
+\item $\forall z \in A:\alpha(F(\gamma(z))) \sqsubseteq_A F^{\#}(z)$ (that is, $F^{\#}$ approximates F)
+\end{enumerate}
+then:
+\begin{equation}
+\label{eq:least_fixed_approx}
+\alpha(lfp(F)) \sqsubseteq_A lfp(F^{\#})
+\end{equation}
+Important because it goes from \underline{local} function approximation to \underline{global}. A key theorem in program analysis. The premises are usually proved manually. Then a least fixed point can be automatically computed and the result is sound.	
+\subsection{Key Theorem 2: Least Fixed Point Approximation}
+If $\alpha$ and $\gamma$ do not form a Galois connection (e.g because $\alpha$ is not monotone) then use the following definition of approximation:
+\begin{equation}
+\forall z \in A: F(\gamma(z)) \sqsubseteq_c \gamma(F^{\#}(z))
+\end{equation}
+This brings us to the second key theorem:\\
+If we have:
+\begin{enumerate}
+\item monotone functions $F:C \to C$ and $F^{\#}:A \to A$
+\item $\gamma:A \to C$ is monotone
+\item $\forall z \in A: F(\gamma(z)) \sqsubseteq_c \gamma(F^{\#}(z))$ (that is, $F^{\#}$ approximates F)
+\end{enumerate}
+then:
+\begin{equation}
+lfp(F) \sqsubseteq_c \gamma(lfp(F^{\#}))
+\end{equation}
