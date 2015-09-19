@@ -1,6 +1,6 @@
 Program Analysis Summary
 ======
-this is a summary of the course material of Prof. Vechevs Program Analysis Course at ETH Zurich, spring 2015. 
+This is a summary of the course material of Prof. Vechevs Program Analysis Course at ETH Zurich, spring 2015. 
 
 Attention
 ----
